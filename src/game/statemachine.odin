@@ -1,42 +1,32 @@
 package game
-
-StateInterface :: struct {
-  updateFn:  proc(),
-  renderFn:  proc(),
-  onEnterFn: proc() -> bool,
-  onExitFn:  proc() -> bool,
-  inputFn:   proc(),
-  stateIDFn: proc() -> string,
-}
+import "./../state"
+import "core:fmt"
 
 StateMachine :: struct {
-  states:      [dynamic]^StateInterface,
-  pushState:   proc(_: ^StateMachine, _: ^StateInterface),
-  changeState: proc(_: ^StateMachine, _: ^StateInterface),
+  states:      [dynamic]^state.StateInterface,
+  pushState:   proc(_: ^StateMachine, _: ^state.StateInterface),
+  changeState: proc(_: ^StateMachine, _: ^state.StateInterface),
   popState:    proc(_: ^StateMachine),
-  input:       proc(_: ^StateMachine),
+  input:       proc(_: ^StateMachine) -> bool,
   update:      proc(_: ^StateMachine),
   render:      proc(_: ^StateMachine),
 }
 
 state_machine_init :: proc() -> ^StateMachine {
   sm := new(StateMachine)
-  sm.pushState = pushState
-  sm.changeState = changeState
-  sm.popState = popState
-  sm.input = input
-  sm.update = update
-  sm.render = render
+  sm.pushState = _pushState
+  sm.changeState = _changeState
+  sm.popState = _popState
+  sm.input = _input
+  sm.update = _update
+  sm.render = _render
 
   return sm
 }
 
-
-pushState :: proc(self: ^StateMachine, state: ^StateInterface) {
+_pushState :: proc(self: ^StateMachine, state: ^state.StateInterface) {
   if len(self.states) != 0 {
-    if self.states[len(self.states) - 1].stateID() == state.stateID() {
-      return
-    }
+    if self.states[len(self.states) - 1].stateID() == state.stateID() do return
 
     self.states[len(self.states) - 1].onExit()
   }
@@ -45,54 +35,35 @@ pushState :: proc(self: ^StateMachine, state: ^StateInterface) {
   self.states[len(self.states) - 1].onEnter()
 }
 
-
-changeState :: proc(self: ^StateMachine, state: ^StateInterface) {
+_changeState :: proc(self: ^StateMachine, state: ^state.StateInterface) {
   if len(self.states) != 0 {
-    if self.states[len(self.states) - 1].stateID() == state.stateID() {
-      return
-    }
+    if self.states[len(self.states) - 1].stateID() == state.stateID() do return
 
-    if self.states[len(self.states) - 1].onExit() {
-      pop(&self.states)
-    }
-
-    append(&self.states, state)
-    self.states[len(self.states) - 1].onEnter()
+    if self.states[len(self.states) - 1].onExit() do pop(&self.states)
   }
 
+  append(&self.states, state)
+  self.states[len(self.states) - 1].onEnter()
 }
 
-
-popState :: proc(self: ^StateMachine) {
+_popState :: proc(self: ^StateMachine) {
   if len(self.states) != 0 {
-    state := pop(&self.states)
-    state.onExit()
+    self.states[len(self.states) - 1].onExit()
+    pop(&self.states)
   }
 
-  if len(self.states) != 0 {
-    state := pop(&self.states)
-    state.onEnter()
-  }
+  if len(self.states) != 0 do self.states[len(self.states) - 1].onEnter()
 }
 
-input :: proc(self: ^StateMachine) {
-  if len(self.states) != 0 {
-    state := pop(&self.states)
-    state.input()
-  }
+_input :: proc(self: ^StateMachine) -> bool {
+  if len(self.states) != 0 do return self.states[len(self.states) - 1].input()
+  return false
 }
 
-
-update :: proc(self: ^StateMachine) {
-  if len(self.states) != 0 {
-    state := pop(&self.states)
-    state.update()
-  }
+_update :: proc(self: ^StateMachine) {
+  if len(self.states) != 0 do self.states[len(self.states) - 1].update()
 }
 
-render :: proc(self: ^StateMachine) {
-  if len(self.states) != 0 {
-    state := pop(&self.states)
-    state.render()
-  }
+_render :: proc(self: ^StateMachine) {
+  if len(self.states) != 0 do self.states[len(self.states) - 1].render()
 }
