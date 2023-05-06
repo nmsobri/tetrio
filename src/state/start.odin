@@ -1,34 +1,59 @@
 package state
 
+import "core:os"
 import "core:fmt"
 import sdl "vendor:sdl2"
 
 StartState :: struct {
-  using interface: StateInterface,
+  using vtable:  StateInterface,
+  window:        ^sdl.Window,
+  renderer:      ^sdl.Renderer,
+  state_machine: ^StateMachine,
 }
 
-init_start_state :: proc() -> ^StateInterface {
+
+init_start_state :: proc(w: ^sdl.Window, r: ^sdl.Renderer, sm: ^StateMachine) -> ^StateInterface {
   ss := new(StartState)
 
-  ss.update = _update
-  ss.render = _render
-  ss.input = _input
-  ss.stateID = _stateID
-  ss.onEnter = _onEnter
-  ss.onExit = _onExit
+  ss.window = w
+  ss.renderer = r
+  ss.state_machine = sm
+
+  ss.vtable = {
+    update  = update,
+    render  = render,
+    input   = input,
+    stateID = stateID,
+    onEnter = onEnter,
+    onExit  = onExit,
+    variant = ss,
+  }
 
   return ss
 }
 
-_update :: proc() {
+
+@(private = "file")
+update :: proc(self: ^StateInterface) {
 
 }
 
-_render :: proc() {
+
+@(private = "file")
+render :: proc(self: ^StateInterface) {
 
 }
 
-_input :: proc() -> bool {
+
+@(private = "file")
+input :: proc(self: ^StateInterface) -> bool {
+  self, ok := self.variant.(^StartState)
+
+  if !ok {
+    fmt.eprintln("Not ^StartState")
+    os.exit(1)
+  }
+
   evt: sdl.Event
 
   for sdl.PollEvent(&evt) {
@@ -38,11 +63,11 @@ _input :: proc() -> bool {
     case .KEYDOWN:
       #partial switch (evt.key.keysym.sym) {
       case .ESCAPE:
-      // play_state := state.init_play_state()
-      // self.state_machine.changeState(play_state)
-      case .KP_ENTER:
-        fmt.println("enter press")
         return false
+      case .RETURN:
+        fmt.println("start::enter press")
+        play_state := init_play_state(self.window, self.renderer, self.state_machine)
+        self.state_machine->changeState(play_state)
       }
     }
   }
@@ -50,14 +75,20 @@ _input :: proc() -> bool {
   return true
 }
 
-_stateID :: proc() -> string {
+
+@(private = "file")
+stateID :: proc(self: ^StateInterface) -> string {
   return "Start"
 }
 
-_onEnter :: proc() -> bool {
+
+@(private = "file")
+onEnter :: proc(self: ^StateInterface) -> bool {
   return true
 }
 
-_onExit :: proc() -> bool {
+
+@(private = "file")
+onExit :: proc(self: ^StateInterface) -> bool {
   return true
 }

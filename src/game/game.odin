@@ -9,14 +9,19 @@ Errno :: distinct i32
 ERROR_NONE: Errno : 0
 ERROR_INIT: Errno : 1
 
-Game :: struct {
-  close:         proc(_: ^Game),
-  loop:          proc(_: ^Game),
-  window:        Maybe(^sdl.Window),
-  renderer:      Maybe(^sdl.Renderer),
-  timer:         ^Timer,
-  state_machine: ^StateMachine,
+GameInterface :: struct {
+  close: proc(_: ^Game),
+  loop:  proc(_: ^Game),
 }
+
+Game :: struct {
+  using vtable:  GameInterface,
+  window:        ^sdl.Window,
+  renderer:      ^sdl.Renderer,
+  timer:         ^Timer,
+  state_machine: ^state.StateMachine,
+}
+
 
 game_init :: proc() -> (^Game, Errno) {
   if status := sdl.Init(sdl.INIT_VIDEO | sdl.INIT_AUDIO); status < 0 {
@@ -25,27 +30,37 @@ game_init :: proc() -> (^Game, Errno) {
   }
 
   self := new(Game)
-  self.close = _close
-  self.loop = _loop
-  self.window = sdl.CreateWindow(GAME_NAME, WINDOW_X, WINDOW_Y, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_FLAGS)
-  self.renderer = sdl.CreateRenderer(self.window.?, -1, {.ACCELERATED})
-  self.timer = timer_init()
-  self.state_machine = state_machine_init()
 
-  start_state := state.init_start_state()
+  self.vtable = {
+    close = close,
+    loop  = loop,
+  }
+
+  self.window = sdl.CreateWindow(GAME_NAME, WINDOW_X, WINDOW_Y, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_FLAGS)
+  self.renderer = sdl.CreateRenderer(self.window, -1, {.ACCELERATED})
+  self.timer = timer_init()
+  self.state_machine = state.state_machine_init()
+
+  start_state := state.init_start_state(self.window, self.renderer, self.state_machine)
   self.state_machine->changeState(start_state)
   return self, ERROR_NONE
 }
 
-_close :: proc(self: ^Game) {
-  sdl.DestroyWindow(self.window.?)
-  sdl.DestroyRenderer(self.renderer.?)
+
+@(private = "file")
+close :: proc(self: ^Game) {
+  free(self.timer)
+  free(self.state_machine)
+
+  sdl.DestroyWindow(self.window)
+  sdl.DestroyRenderer(self.renderer)
   sdl.Quit()
 }
 
-_loop :: proc(self: ^Game) {
-  ever := true
 
+@(private = "file")
+loop :: proc(self: ^Game) {
+  ever := true
   for ever {
     self.timer->startTimer()
 

@@ -1,10 +1,23 @@
 package state
 
 StateInterface :: struct {
-  update:  proc(),
-  render:  proc(),
-  input:   proc() -> bool,
-  stateID: proc() -> string,
-  onEnter: proc() -> bool,
-  onExit:  proc() -> bool,
+  update:  proc(_: ^StateInterface),
+  render:  proc(_: ^StateInterface),
+  input:   proc(_: ^StateInterface) -> bool,
+  stateID: proc(_: ^StateInterface) -> string,
+  onEnter: proc(_: ^StateInterface) -> bool,
+  onExit:  proc(_: ^StateInterface) -> bool,
+  variant: union {
+    ^StartState,
+    ^PlayState,
+  },
+}
+
+StateMachineMethod :: struct {
+  pushState:   proc(_: ^StateMachine, _: ^StateInterface),
+  changeState: proc(_: ^StateMachine, _: ^StateInterface),
+  popState:    proc(_: ^StateMachine),
+  input:       proc(_: ^StateMachine) -> bool,
+  update:      proc(_: ^StateMachine),
+  render:      proc(_: ^StateMachine),
 }
