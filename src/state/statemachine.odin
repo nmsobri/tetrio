@@ -6,7 +6,7 @@ StateMachine :: struct {
   states:       [dynamic]^StateInterface,
 }
 
-state_machine_init :: proc() -> ^StateMachine {
+StateMachine_init :: proc() -> ^StateMachine {
   sm := new(StateMachine)
 
   sm.vtable = {

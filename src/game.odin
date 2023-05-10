@@ -1,8 +1,12 @@
-package game
+package main
 
 import "core:os"
 import "core:fmt"
-import "./../state"
+
+import "game"
+import "state"
+import cfg "config"
+
 import sdl "vendor:sdl2"
 
 Errno :: distinct i32
@@ -18,12 +22,12 @@ Game :: struct {
   using vtable:  GameInterface,
   window:        ^sdl.Window,
   renderer:      ^sdl.Renderer,
-  timer:         ^Timer,
+  timer:         ^game.Timer,
   state_machine: ^state.StateMachine,
 }
 
 
-game_init :: proc() -> (^Game, Errno) {
+Game_init :: proc() -> (^Game, Errno) {
   if status := sdl.Init(sdl.INIT_VIDEO | sdl.INIT_AUDIO); status < 0 {
     fmt.eprintf("ERROR: %s\n", sdl.GetErrorString())
     return nil, ERROR_INIT
@@ -36,12 +40,12 @@ game_init :: proc() -> (^Game, Errno) {
     loop  = loop,
   }
 
-  self.window = sdl.CreateWindow(GAME_NAME, WINDOW_X, WINDOW_Y, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_FLAGS)
+  self.window = sdl.CreateWindow(cfg.GAME_NAME, cfg.WINDOW_X, cfg.WINDOW_Y, cfg.WINDOW_WIDTH, cfg.WINDOW_HEIGHT, cfg.WINDOW_FLAGS)
   self.renderer = sdl.CreateRenderer(self.window, -1, {.ACCELERATED})
-  self.timer = timer_init()
-  self.state_machine = state.state_machine_init()
+  self.timer = game.Timer_init()
+  self.state_machine = state.StateMachine_init()
 
-  start_state := state.init_start_state(self.window, self.renderer, self.state_machine)
+  start_state := state.StartState_init(self.window, self.renderer, self.state_machine)
   self.state_machine->changeState(start_state)
   return self, ERROR_NONE
 }
@@ -70,8 +74,8 @@ loop :: proc(self: ^Game) {
 
     time_taken := cast(f64)self.timer->getTicks()
 
-    if (time_taken < TICKS_PER_FRAME) {
-      delay := cast(u32)(TICKS_PER_FRAME - time_taken)
+    if (time_taken < cfg.TICKS_PER_FRAME) {
+      delay := cast(u32)(cfg.TICKS_PER_FRAME - time_taken)
       sdl.Delay(delay)
     }
   }

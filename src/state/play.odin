@@ -1,5 +1,6 @@
 package state
 
+import "core:os"
 import "core:fmt"
 import sdl "vendor:sdl2"
 
@@ -11,7 +12,7 @@ PlayState :: struct {
 }
 
 
-init_play_state :: proc(w: ^sdl.Window, r: ^sdl.Renderer, sm: ^StateMachine) -> ^StateInterface {
+PlayState_init :: proc(w: ^sdl.Window, r: ^sdl.Renderer, sm: ^StateMachine) -> ^StateInterface {
   ps := new(PlayState)
 
   ps.window = w
@@ -41,6 +42,18 @@ update :: proc(self: ^StateInterface) {
 @(private = "file")
 render :: proc(self: ^StateInterface) {
 
+  self, ok := self.variant.(^PlayState)
+
+  if !ok {
+    fmt.eprintln("Not ^PlayState")
+    os.exit(1)
+  }
+
+  sdl.SetRenderDrawColor(self.renderer, 0x00, 0x00, 0x00, 0x00)
+  sdl.RenderClear(self.renderer)
+
+
+  sdl.RenderPresent(self.renderer)
 }
 
 

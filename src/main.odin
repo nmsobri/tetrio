@@ -1,13 +1,12 @@
 package main
 
-import g "game"
 import "core:fmt"
 import sdl "vendor:sdl2"
 
 main :: proc() {
-  game, ok := g.game_init()
+  game, ok := Game_init()
 
-  if ok != g.ERROR_NONE {
+  if ok != ERROR_NONE {
     fmt.eprintf("Cannot init SDL")
     return
   }

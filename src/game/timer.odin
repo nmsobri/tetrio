@@ -16,7 +16,7 @@ Timer :: struct {
   isPaused:    proc(self: ^Timer) -> bool,
 }
 
-timer_init :: proc() -> ^Timer {
+Timer_init :: proc() -> ^Timer {
   t := new(Timer)
 
   t.is_started = false
