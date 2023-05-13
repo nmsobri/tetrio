@@ -1,4 +1,4 @@
-package game
+package util
 
 import "core:c"
 import "core:mem"

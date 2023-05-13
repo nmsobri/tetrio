@@ -3,31 +3,34 @@ package state
 import "core:c"
 import "core:os"
 import "core:fmt"
+import "../util"
 import "../game"
 import "../config"
 import sdl "vendor:sdl2"
+
 
 StartState :: struct {
   using vtable:  StateInterface,
   window:        ^sdl.Window,
   renderer:      ^sdl.Renderer,
   state_machine: ^StateMachine,
-  font_info:     ^game.BitmapFont,
-  font_logo:     ^game.BitmapFont,
-  font_credit:   ^game.BitmapFont,
+  font_info:     ^util.BitmapFont,
+  font_logo:     ^util.BitmapFont,
+  font_credit:   ^util.BitmapFont,
+  board:         ^game.Board,
 }
 
 
-StartState_init :: proc(w: ^sdl.Window, r: ^sdl.Renderer, sm: ^StateMachine) -> ^StateInterface {
+StartState_init :: proc(w: ^sdl.Window, r: ^sdl.Renderer, sm: ^StateMachine) -> ^StartState {
   ss := new(StartState)
 
   ss.window = w
   ss.renderer = r
   ss.state_machine = sm
 
-  ss.font_info, _ = game.BitmapFont_init(ss.renderer, "res/Futura.ttf", 25)
-  ss.font_logo, _ = game.BitmapFont_init(ss.renderer, "res/Futura.ttf", 90)
-  ss.font_credit, _ = game.BitmapFont_init(ss.renderer, "res/Futura.ttf", 15)
+  ss.font_info, _ = util.BitmapFont_init(ss.renderer, "res/Futura.ttf", 25)
+  ss.font_logo, _ = util.BitmapFont_init(ss.renderer, "res/Futura.ttf", 90)
+  ss.font_credit, _ = util.BitmapFont_init(ss.renderer, "res/Futura.ttf", 15)
 
   ss.vtable = {
     update  = update,
@@ -39,13 +42,14 @@ StartState_init :: proc(w: ^sdl.Window, r: ^sdl.Renderer, sm: ^StateMachine) -> 
     variant = ss,
   }
 
+  ss.board = game.Board_init(ss.renderer)
+
   return ss
 }
 
 
 @(private = "file")
 update :: proc(self: ^StateInterface) {
-
 }
 
 
@@ -71,15 +75,16 @@ render :: proc(self: ^StateInterface) {
   sdl.SetRenderDrawColor(self.renderer, 0x00, 0xFF, 0x00, 0xFF)
   sdl.RenderDrawRect(self.renderer, &{x = 0, y = 0, w = 300, h = config.WINDOW_HEIGHT - config.BLOCK * 2})
 
-  // self.board.interface.draw(Piece.View.PlayViewport);
+  self.board->draw(game.View.PlayViewport)
+
   txt_width := self.font_logo->calculateTextWidth("Tetrio")
-  self.font_logo->renderText(cast(i32)((config.BLOCK * 10) - txt_width) / 2, 75, "Tetrio", 255, 0, 0)
+  self.font_logo->renderText(cast(i32)((config.BLOCK * 10) - txt_width) / 2, 75, "Tetrio", 0, 200, 0)
 
   txt_width = self.font_info->calculateTextWidth("Press Enter To Play")
   self.font_info->renderText(cast(i32)((config.BLOCK * 10) - txt_width) / 2, 185, "Press Enter To Play", 0, 0, 255)
 
-  txt_width = self.font_credit->calculateTextWidth("(C) ~Sobri 2021")
-  self.font_credit->renderText(cast(i32)((config.BLOCK * 10) - txt_width) / 2, config.WINDOW_HEIGHT - 110, "(C) ~Sobri 2023", 255, 255, 255)
+  txt_width = self.font_credit->calculateTextWidth("(C) Sobri 2021")
+  self.font_credit->renderText(cast(i32)((config.BLOCK * 10) - txt_width) / 2, config.WINDOW_HEIGHT - 110, "(C) Sobri 2023", 0, 0, 0)
 
   // Right viewport
   sdl.RenderSetViewport(self.renderer, &config.RightViewport)
@@ -125,7 +130,7 @@ render :: proc(self: ^StateInterface) {
   sdl.RenderFillRect(self.renderer, &{x = 0, y = 0, w = config.BLOCK * 6, h = config.WINDOW_HEIGHT})
 
   // Draw incoming piece
-  // try;Piece.drawRandomPiece(self.renderer, Piece.View.TetrominoViewport)
+  // Piece.drawRandomPiece(self.renderer, Piece.View.TetrominoViewport)
 
   sdl.RenderPresent(self.renderer)
 }
@@ -152,7 +157,7 @@ input :: proc(self: ^StateInterface) -> bool {
         return false
       case .RETURN:
         fmt.println("start::enter press")
-        play_state := StartState_init(self.window, self.renderer, self.state_machine)
+        play_state := PlayState_init(self.window, self.renderer, self.state_machine)
         self.state_machine->changeState(play_state)
       }
     }

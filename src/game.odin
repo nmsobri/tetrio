@@ -3,7 +3,7 @@ package main
 import "core:os"
 import "core:fmt"
 
-import "game"
+import "util"
 import "state"
 import cfg "config"
 
@@ -22,7 +22,7 @@ Game :: struct {
   using vtable:  GameInterface,
   window:        ^sdl.Window,
   renderer:      ^sdl.Renderer,
-  timer:         ^game.Timer,
+  timer:         ^util.Timer,
   state_machine: ^state.StateMachine,
 }
 
@@ -42,7 +42,7 @@ Game_init :: proc() -> (^Game, Errno) {
 
   self.window = sdl.CreateWindow(cfg.GAME_NAME, cfg.WINDOW_X, cfg.WINDOW_Y, cfg.WINDOW_WIDTH, cfg.WINDOW_HEIGHT, cfg.WINDOW_FLAGS)
   self.renderer = sdl.CreateRenderer(self.window, -1, {.ACCELERATED})
-  self.timer = game.Timer_init()
+  self.timer = util.Timer_init()
   self.state_machine = state.StateMachine_init()
 
   start_state := state.StartState_init(self.window, self.renderer, self.state_machine)
