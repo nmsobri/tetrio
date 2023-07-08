@@ -7,6 +7,7 @@ import "../util"
 import "../game"
 import "../config"
 import sdl "vendor:sdl2"
+import "vendor:sdl2/mixer"
 
 
 StartState :: struct {
@@ -18,6 +19,7 @@ StartState :: struct {
   font_logo:     ^util.BitmapFont,
   font_credit:   ^util.BitmapFont,
   board:         ^game.Board,
+  bg_music:      ^mixer.Music,
 }
 
 
@@ -44,6 +46,13 @@ StartState_init :: proc(w: ^sdl.Window, r: ^sdl.Renderer, sm: ^StateMachine) -> 
 
   ss.board = game.Board_init(ss.renderer)
 
+  ss.bg_music = mixer.LoadMUS("res/intro.mp3")
+
+  if ss.bg_music == nil {
+    fmt.eprintf("Failed to load intro sound! SDL_mixer Error: %s\n", sdl.GetError())
+    return nil
+  }
+
   return ss
 }
 
@@ -55,12 +64,7 @@ update :: proc(self: ^StateInterface) {
 
 @(private = "file")
 render :: proc(self: ^StateInterface) {
-  self, ok := self.variant.(^StartState)
-
-  if !ok {
-    fmt.eprintln("Not ^StartState")
-    os.exit(1)
-  }
+  self, _ := self.variant.(^StartState)
 
   sdl.SetRenderDrawColor(self.renderer, 0x00, 0x00, 0x00, 0x00)
   sdl.RenderClear(self.renderer)
@@ -130,25 +134,20 @@ render :: proc(self: ^StateInterface) {
   sdl.RenderFillRect(self.renderer, &{x = 0, y = 0, w = config.BLOCK * 6, h = config.WINDOW_HEIGHT})
 
   // Draw incoming piece
-  // Piece.drawRandomPiece(self.renderer, Piece.View.TetrominoViewport)
-
+  game.drawRandomPiece(self.renderer, game.View.TetrominoViewport)
   sdl.RenderPresent(self.renderer)
 }
 
 
 @(private = "file")
 input :: proc(self: ^StateInterface) -> bool {
-  self, ok := self.variant.(^StartState)
-
-  if !ok {
-    fmt.eprintln("Not ^StartState")
-    os.exit(1)
-  }
+  self, _ := self.variant.(^StartState)
 
   evt: sdl.Event
 
   for sdl.PollEvent(&evt) {
-    #partial switch (evt.type) {
+    fmt.println("start poll event")
+    #partial switch evt.type {
     case .QUIT:
       return false
     case .KEYDOWN:
@@ -156,7 +155,6 @@ input :: proc(self: ^StateInterface) -> bool {
       case .ESCAPE:
         return false
       case .RETURN:
-        fmt.println("start::enter press")
         play_state := PlayState_init(self.window, self.renderer, self.state_machine)
         self.state_machine->changeState(play_state)
       }
@@ -175,11 +173,15 @@ stateID :: proc(self: ^StateInterface) -> string {
 
 @(private = "file")
 onEnter :: proc(self: ^StateInterface) -> bool {
+  self, _ := self.variant.(^StartState)
+  mixer.PlayMusic(self.bg_music, -1)
   return true
 }
 
 
 @(private = "file")
 onExit :: proc(self: ^StateInterface) -> bool {
+  self, _ := self.variant.(^StartState)
+  mixer.HaltMusic()
   return true
 }

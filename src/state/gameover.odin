@@ -1,4 +1,3 @@
-
 package state
 
 import "../game"
@@ -9,14 +8,15 @@ import sdl "vendor:sdl2"
 import "vendor:sdl2/mixer"
 
 
-PauseState :: struct {
+GameoverState :: struct {
   using vtable:  StateInterface,
   window:        ^sdl.Window,
   renderer:      ^sdl.Renderer,
   state_machine: ^StateMachine,
 }
 
-PauseState_init :: proc(w: ^sdl.Window, r: ^sdl.Renderer, sm: ^StateMachine) -> ^StateInterface {
+
+GameoverState_init :: proc(w: ^sdl.Window, r: ^sdl.Renderer, sm: ^StateMachine) -> ^StateInterface {
   return nil
 }
 
