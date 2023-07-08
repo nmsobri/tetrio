@@ -285,7 +285,7 @@ _lock :: proc(self: ^Piece, board: ^Board, clear: ^mixer.Chunk) -> bool {
   if should_return do return false
 
   // Check if there is full row, if its, remove full row
-  // self->remove(board, clear)
+  self->remove(board, clear)
   return true
 }
 

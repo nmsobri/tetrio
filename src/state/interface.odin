@@ -10,6 +10,7 @@ StateInterface :: struct {
   variant: union {
     ^StartState,
     ^PlayState,
+    ^PauseState,
   },
 }
 

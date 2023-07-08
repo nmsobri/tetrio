@@ -121,9 +121,8 @@ render :: proc(self: ^StateInterface) {
 
   // Render the board and the tetromino
   piece := self.elements["piece"].(^game.Piece)
-
-
   board := self.elements["board"].(^game.Board)
+
   board->draw(game.View.PlayViewport)
   piece->draw(game.View.PlayViewport)
 
@@ -197,7 +196,7 @@ input :: proc(self: ^StateInterface) -> bool {
     case .KEYDOWN:
       #partial switch evt.key.keysym.sym {
       case .ESCAPE:
-        pause_state := PauseState_init(self.window, self.renderer, self.state_machine)
+        pause_state := PauseState_init(self.window, self.renderer, self.state_machine, self)
         self.state_machine->pushState(pause_state)
 
       case .SPACE:

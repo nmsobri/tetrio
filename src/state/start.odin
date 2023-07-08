@@ -146,7 +146,6 @@ input :: proc(self: ^StateInterface) -> bool {
   evt: sdl.Event
 
   for sdl.PollEvent(&evt) {
-    fmt.println("start poll event")
     #partial switch evt.type {
     case .QUIT:
       return false
