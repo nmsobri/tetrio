@@ -8,7 +8,7 @@ import "../config"
 import sdl "vendor:sdl2"
 import "vendor:sdl2/mixer"
 
-CAPSCORE :: 50
+CAPSCORE :: 100
 STARTCOOLDOWNTIMER :: 1000
 
 PlayState :: struct {

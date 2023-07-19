@@ -353,7 +353,11 @@ _remove :: proc(self: ^Piece, board: ^Board, clear: ^mixer.Chunk) {
     if self.internal_score^ >= self.cap_score^ {
       self.level^ += 1
       self.internal_score^ -= self.cap_score^
-      self.cooldown_timer^ -= 1200
+
+      // cap cool down to 200ms
+      if !((self.cooldown_timer^ - 200) < 200) {
+        self.cooldown_timer^ -= 200
+      }
     }
 
   }
