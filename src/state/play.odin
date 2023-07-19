@@ -55,6 +55,7 @@ PlayState_init :: proc(w: ^sdl.Window, r: ^sdl.Renderer, sm: ^StateMachine) -> ^
   ps.line = 0
   ps.cap_timer = util.Timer_init()
   ps.font_info, _ = util.BitmapFont_init(r, "res/Futura.ttf", 25)
+  ps.cooldown_timer = STARTCOOLDOWNTIMER
 
   ps.drop_sound = mixer.LoadWAV("res/drop.wav")
 
@@ -85,7 +86,6 @@ PlayState_init :: proc(w: ^sdl.Window, r: ^sdl.Renderer, sm: ^StateMachine) -> ^
     "board" = board,
     "piece" = piece,
   }
-  ps.cooldown_timer = STARTCOOLDOWNTIMER
 
   return ps
 }

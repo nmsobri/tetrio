@@ -99,7 +99,7 @@ randomNumber :: proc() -> u32 {
 
 randomPiece :: proc(renderer: ^sdl.Renderer, score: ^u32, internal_score: ^u32, cap_score: ^u32, level: ^u32, line: ^u32, cooldown_timer: ^u32) -> ^Piece {
   NextPiece = Piece_init(renderer, 0, 0, randomTetromino(), score, internal_score, cap_score, level, line, cooldown_timer)
-  return Piece_init(renderer, 0, 0, randomTetromino(), score, internal_score, cap_score, level, line, cooldown_timer)
+  return Piece_init(renderer, 3, -3, randomTetromino(), score, internal_score, cap_score, level, line, cooldown_timer)
 }
 
 
