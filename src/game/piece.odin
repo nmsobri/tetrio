@@ -4,7 +4,7 @@ import "../config"
 import "core:math/rand"
 import sdl "vendor:sdl2"
 import "vendor:sdl2/mixer"
-
+import "core:fmt"
 
 Entity :: union {
   ^Board,
@@ -42,10 +42,16 @@ Piece :: struct {
   tetromino_index: u32,
   layout:          Layout,
   score:           ^u32,
+  internal_score:  ^u32,
+  cap_score:       ^u32,
   line:            ^u32,
+  cooldown_timer:  ^u32,
+  level:           ^u32,
+  pre_left:        bool,
+  pre_right:       bool,
 }
 
-Piece_init :: proc(renderer: ^sdl.Renderer, x: i32, y: i32, tetromino: Tetromino, score: ^u32, line: ^u32) -> ^Piece {
+Piece_init :: proc(renderer: ^sdl.Renderer, x: i32, y: i32, tetromino: Tetromino, score: ^u32, internal_score: ^u32, cap_score: ^u32, level: ^u32, line: ^u32, cooldown_timer: ^u32) -> ^Piece {
   piece := new(Piece)
 
   piece.x = x
@@ -56,6 +62,12 @@ Piece_init :: proc(renderer: ^sdl.Renderer, x: i32, y: i32, tetromino: Tetromino
   piece.layout = tetromino.layout[0]
   piece.score = score
   piece.line = line
+  piece.pre_left = false
+  piece.pre_right = false
+  piece.internal_score = internal_score
+  piece.cap_score = cap_score
+  piece.level = level
+  piece.cooldown_timer = cooldown_timer
 
   piece.mixin = {
     _draw              = _draw,
@@ -80,18 +92,20 @@ Piece_init :: proc(renderer: ^sdl.Renderer, x: i32, y: i32, tetromino: Tetromino
 }
 
 randomNumber :: proc() -> u32 {
-  return cast(u32)rand.float32_range(0, len(Tetrominoes))
+  random_number := cast(u32)rand.uint64() % len(Tetrominoes)
+  return random_number
 }
 
 
-randomPiece :: proc(renderer: ^sdl.Renderer, score: ^u32, line: ^u32) -> ^Piece {
-  NextPiece = Piece_init(renderer, 0, 0, Tetrominoes[randomNumber()], score, line)
-  return Piece_init(renderer, 3, -3, Tetrominoes[randomNumber()], score, line)
+randomPiece :: proc(renderer: ^sdl.Renderer, score: ^u32, internal_score: ^u32, cap_score: ^u32, level: ^u32, line: ^u32, cooldown_timer: ^u32) -> ^Piece {
+  NextPiece = Piece_init(renderer, 0, 0, randomTetromino(), score, internal_score, cap_score, level, line, cooldown_timer)
+  return Piece_init(renderer, 0, 0, randomTetromino(), score, internal_score, cap_score, level, line, cooldown_timer)
 }
 
 
 piece_draw :: proc(self: ^DrawInterface, v: View) {
   self, ok := self.draw_interface_variant.(^Piece)
+  color := self.tetromino.color
 
   for row: i32 = 0; row < len(self.layout); row += 1 {
 
@@ -100,14 +114,11 @@ piece_draw :: proc(self: ^DrawInterface, v: View) {
       if self.layout[row][col] {
 
         if v == .PlayViewport {
-          self->_draw((self.x + col) * config.BLOCK, (self.y + row) * config.BLOCK, self.tetromino.color[0], self.tetromino.color[1], self.tetromino.color[2], 255)
+          self->_draw((self.x + col) * config.BLOCK, (self.y + row) * config.BLOCK, color[0], color[1], color[2], 255)
         } else {
-          viewport_x_space := cast(f32)config.VIEWPORT_INFO_WIDTH - cast(f32)self.tetromino.width / 2
-          viewport_y_space := cast(f32)config.TetrominoViewport.h - cast(f32)self.tetromino.height / 2
-
-          x := 0
-          y := 0
-          self->_draw(cast(i32)x, cast(i32)y, self.tetromino.color[0], self.tetromino.color[1], self.tetromino.color[2], 255)
+          x: i32 = cast(i32)((config.VIEWPORT_INFO_WIDTH - self.tetromino.width) / 2)
+          y: i32 = cast(i32)((config.TetrominoViewport.h - cast(i32)self.tetromino.height) / 2)
+          self->_draw(x + (col * config.BLOCK), (y - cast(i32)(self.tetromino.yoffset * config.BLOCK)) + (row * config.BLOCK), color[0], color[1], color[2], 255)
         }
 
       }
@@ -118,9 +129,8 @@ piece_draw :: proc(self: ^DrawInterface, v: View) {
 
 drawRandomPiece :: proc(renderer: ^sdl.Renderer, view: View) {
   if NextPiece == nil {
-    score: u32 = 0
-    line: u32 = 0
-    NextPiece = Piece_init(renderer, 0, 0, Tetrominoes[randomNumber()], &score, &line)
+    dummy: u32 = 0
+    NextPiece = Piece_init(renderer, 0, 0, randomTetromino(), &dummy, &dummy, &dummy, &dummy, &dummy, &dummy)
   }
 
   NextPiece.?->draw(view)
@@ -143,7 +153,7 @@ _hardDrop :: proc(self: ^Piece, board: ^Board, elements: ^map[string]Entity, dro
   NextPiece.?.y = -3
 
   elements^["piece"] = NextPiece.?
-  NextPiece = Piece_init(self.renderer, 0, 0, Tetrominoes[randomNumber()], self.score, self.line)
+  NextPiece = Piece_init(self.renderer, 0, 0, randomTetromino(), self.score, self.internal_score, self.cap_score, self.level, self.line, self.cooldown_timer)
   return true
 }
 
@@ -157,6 +167,16 @@ _moveDown :: proc(self: ^Piece, board: ^Board, elements: ^map[string]Entity, dro
 
   if !self->collision(board, 0, 1, self.layout) {
     self.y += 1
+
+    if self.pre_left {
+      self->moveLeft(board)
+      self.pre_left = false
+    }
+
+    if self.pre_right {
+      self->moveRight(board)
+      self.pre_right = false
+    }
 
     if is_next_collide {
       // Play sound effect
@@ -176,7 +196,7 @@ _moveDown :: proc(self: ^Piece, board: ^Board, elements: ^map[string]Entity, dro
     NextPiece.?.y = -3
 
     elements^["piece"] = NextPiece.?
-    NextPiece = Piece_init(self.renderer, 0, 0, Tetrominoes[randomNumber()], self.score, self.line)
+    NextPiece = Piece_init(self.renderer, 0, 0, randomTetromino(), self.score, self.internal_score, self.cap_score, self.level, self.line, self.cooldown_timer)
   }
 
   return true
@@ -187,6 +207,8 @@ _moveRight :: proc(self: ^Piece, board: ^Board) {
   if !self->collision(board, 1, 0, self.layout) {
     self.x += 1
     self->draw(View.PlayViewport)
+  } else {
+    self.pre_right = true
   }
 }
 
@@ -195,6 +217,8 @@ _moveLeft :: proc(self: ^Piece, board: ^Board) {
   if !self->collision(board, -1, 0, self.layout) {
     self.x -= 1
     self->draw(View.PlayViewport)
+  } else {
+    self.pre_left = true
   }
 }
 
@@ -291,7 +315,7 @@ _lock :: proc(self: ^Piece, board: ^Board, clear: ^mixer.Chunk) -> bool {
 
 
 _remove :: proc(self: ^Piece, board: ^Board, clear: ^mixer.Chunk) {
-  _ = clear
+  line: u32 = 0
 
   // Remove full rows
   for row: u8 = 0; row < config.ROW; row += 1 {
@@ -309,8 +333,7 @@ _remove :: proc(self: ^Piece, board: ^Board, clear: ^mixer.Chunk) {
 
       SomeRowFull = true
       // If the row is full, we move down all the rows above it
-      self.score^ += 10
-      self.line^ += 1
+      line += 1
 
       // Change color of rows that need to be remove
       for _col := 0; _col < config.COL; _col += 1 {
@@ -321,6 +344,20 @@ _remove :: proc(self: ^Piece, board: ^Board, clear: ^mixer.Chunk) {
       board.full_rows[row] = true
     }
   }
+
+  if SomeRowFull {
+    self.score^ += line * 10 + ((line - 1) * 5)
+    self.internal_score^ += line * 10 + ((line - 1) * 5)
+    self.line^ += line
+
+    if self.internal_score^ >= self.cap_score^ {
+      self.level^ += 1
+      self.internal_score^ -= self.cap_score^
+      self.cooldown_timer^ -= 1200
+    }
+
+  }
+
 }
 
 

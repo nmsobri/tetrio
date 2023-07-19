@@ -8,20 +8,26 @@ import "../config"
 import sdl "vendor:sdl2"
 import "vendor:sdl2/mixer"
 
+CAPSCORE :: 50
+STARTCOOLDOWNTIMER :: 1000
+
 PlayState :: struct {
-  using vtable:  StateInterface,
-  window:        ^sdl.Window,
-  renderer:      ^sdl.Renderer,
-  state_machine: ^StateMachine,
-  level:         u8,
-  score:         u32,
-  line:          u32,
-  cap_timer:     ^util.Timer,
-  font_info:     ^util.BitmapFont,
-  drop_sound:    ^mixer.Chunk,
-  clear_sound:   ^mixer.Chunk,
-  bg_music:      ^mixer.Music,
-  elements:      map[string]game.Entity,
+  using vtable:   StateInterface,
+  window:         ^sdl.Window,
+  renderer:       ^sdl.Renderer,
+  state_machine:  ^StateMachine,
+  level:          u32,
+  score:          u32,
+  internal_score: u32,
+  cap_score:      u32,
+  line:           u32,
+  cap_timer:      ^util.Timer,
+  font_info:      ^util.BitmapFont,
+  drop_sound:     ^mixer.Chunk,
+  clear_sound:    ^mixer.Chunk,
+  bg_music:       ^mixer.Music,
+  elements:       map[string]game.Entity,
+  cooldown_timer: u32,
 }
 
 
@@ -44,6 +50,8 @@ PlayState_init :: proc(w: ^sdl.Window, r: ^sdl.Renderer, sm: ^StateMachine) -> ^
 
   ps.level = 1
   ps.score = 0
+  ps.internal_score = 0
+  ps.cap_score = CAPSCORE
   ps.line = 0
   ps.cap_timer = util.Timer_init()
   ps.font_info, _ = util.BitmapFont_init(r, "res/Futura.ttf", 25)
@@ -70,12 +78,14 @@ PlayState_init :: proc(w: ^sdl.Window, r: ^sdl.Renderer, sm: ^StateMachine) -> ^
   }
 
   board := game.Board_init(ps.renderer)
-  piece := game.randomPiece(ps.renderer, &ps.score, &ps.line)
+  piece := game.randomPiece(ps.renderer, &ps.score, &ps.internal_score, &ps.cap_score, &ps.level, &ps.line, &ps.cooldown_timer)
+
 
   ps.elements = map[string]game.Entity {
     "board" = board,
     "piece" = piece,
   }
+  ps.cooldown_timer = STARTCOOLDOWNTIMER
 
   return ps
 }
@@ -90,10 +100,10 @@ update :: proc(self: ^StateInterface) {
 
   elapsed_time := self.cap_timer->getTicks()
 
-  if (elapsed_time >= 1000) {
+  if (elapsed_time >= self.cooldown_timer) {
     if piece->moveDown(board, &self.elements, self.drop_sound, self.clear_sound) == false {
-      game_over_state := GameoverState_init(self.window, self.renderer, self.state_machine)
-      self.state_machine->pushState(game_over_state)
+      game_over_state := GameoverState_init(self.window, self.renderer, self.state_machine, self)
+      self.state_machine->changeState(game_over_state)
     }
 
     self.cap_timer->startTimer()
@@ -139,7 +149,7 @@ render :: proc(self: ^StateInterface) {
   txt_width := self.font_info->calculateTextWidth("Level")
   self.font_info->renderText(cast(i32)(config.VIEWPORT_INFO_WIDTH - txt_width) / 2, 35, "Level", 255, 0, 0)
 
-  level_txt := "1"
+  level_txt := fmt.tprintf("%v", self.level)
   txt_width = self.font_info->calculateTextWidth(level_txt)
   self.font_info->renderText(cast(i32)(config.VIEWPORT_INFO_WIDTH - txt_width) / 2, 75, level_txt, 255, 0, 0)
 
@@ -202,21 +212,21 @@ input :: proc(self: ^StateInterface) -> bool {
       case .SPACE:
         piece->hardDrop(board, &self.elements, self.drop_sound, self.clear_sound)
 
-      case .UP:
+      case .UP, .W:
         if (evt.key.repeat == 0) {
           piece->rotate(board)
         }
 
-      case .DOWN:
+      case .DOWN, .S:
         if piece->moveDown(board, &self.elements, self.drop_sound, self.clear_sound) == false {
-          gameover_state := GameoverState_init(self.window, self.renderer, self.state_machine)
+          gameover_state := GameoverState_init(self.window, self.renderer, self.state_machine, self)
           self.state_machine->pushState(gameover_state)
         }
 
-      case .LEFT:
+      case .LEFT, .A:
         piece->moveLeft(board)
 
-      case .RIGHT:
+      case .RIGHT, .D:
         piece->moveRight(board)
       }
 

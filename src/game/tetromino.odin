@@ -5,6 +5,7 @@ T :: true
 F :: false
 
 Layout :: [4][4]bool
+Colors: [7][3]u8 = {{49, 199, 239}, {247, 211, 8}, {173, 77, 156}, {90, 101, 173}, {239, 121, 33}, {66, 182, 66}, {239, 32, 41}}
 
 Tetromino :: struct {
   name:    u8,
@@ -18,7 +19,7 @@ Tetromino :: struct {
 Tetrominoes := [?]Tetromino{
   Tetromino{
     name = 'I',
-    color = {49, 199, 239},
+    color = Colors[0],
     width = config.BLOCK * 4,
     height = config.BLOCK * 1,
     yoffset = 2,
@@ -31,7 +32,7 @@ Tetrominoes := [?]Tetromino{
   },
   Tetromino{
     name = 'O',
-    color = {247, 211, 8},
+    color = Colors[0],
     width = config.BLOCK * 2,
     height = config.BLOCK * 2,
     yoffset = 2,
@@ -44,7 +45,7 @@ Tetrominoes := [?]Tetromino{
   },
   Tetromino{
     name = 'T',
-    color = {173, 77, 156},
+    color = Colors[0],
     width = config.BLOCK * 3,
     height = config.BLOCK * 2,
     yoffset = 2,
@@ -57,7 +58,7 @@ Tetrominoes := [?]Tetromino{
   },
   Tetromino{
     name = 'J',
-    color = {90, 101, 173},
+    color = Colors[0],
     width = config.BLOCK * 2,
     height = config.BLOCK * 3,
     yoffset = 1,
@@ -70,7 +71,7 @@ Tetrominoes := [?]Tetromino{
   },
   Tetromino{
     name = 'L',
-    color = {239, 121, 33},
+    color = Colors[0],
     width = config.BLOCK * 2,
     height = config.BLOCK * 3,
     yoffset = 1,
@@ -83,7 +84,7 @@ Tetrominoes := [?]Tetromino{
   },
   Tetromino{
     name = 'S',
-    color = {66, 182, 66},
+    color = Colors[0],
     width = config.BLOCK * 3,
     height = config.BLOCK * 2,
     yoffset = 2,
@@ -96,7 +97,7 @@ Tetrominoes := [?]Tetromino{
   },
   Tetromino{
     name = 'Z',
-    color = {239, 32, 41},
+    color = Colors[0],
     width = config.BLOCK * 3,
     height = config.BLOCK * 2,
     yoffset = 2,
@@ -107,4 +108,10 @@ Tetrominoes := [?]Tetromino{
       Layout{[?]bool{F, F, F, F}, [?]bool{F, F, T, F}, [?]bool{F, T, T, F}, [?]bool{F, T, F, F}},
     },
   },
+}
+
+randomTetromino :: proc() -> Tetromino {
+  tetromino := Tetrominoes[randomNumber()]
+  tetromino.color = Colors[randomNumber()]
+  return tetromino
 }

@@ -11,6 +11,7 @@ StateInterface :: struct {
     ^StartState,
     ^PlayState,
     ^PauseState,
+    ^GameoverState,
   },
 }
 
