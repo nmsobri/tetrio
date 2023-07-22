@@ -103,7 +103,7 @@ update :: proc(self: ^StateInterface) {
   if (elapsed_time >= self.cooldown_timer) {
     if piece->moveDown(board, &self.elements, self.drop_sound, self.clear_sound) == false {
       game_over_state := GameoverState_init(self.window, self.renderer, self.state_machine, self)
-      self.state_machine->changeState(game_over_state)
+      self.state_machine->pushState(game_over_state)
     }
 
     self.cap_timer->startTimer()

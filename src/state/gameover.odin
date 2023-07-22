@@ -141,6 +141,9 @@ input :: proc(self: ^StateInterface) -> bool {
         // Pop game over state
         self.state_machine->popState()
         play_state := PlayState_init(self.window, self.renderer, self.state_machine)
+        // Remove the play state
+        self.state_machine->popState()
+        // Remove the gameover state
         self.state_machine->changeState(play_state)
       }
     }
