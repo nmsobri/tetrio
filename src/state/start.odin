@@ -9,6 +9,7 @@ import "../config"
 import sdl "vendor:sdl2"
 import "vendor:sdl2/mixer"
 
+SOUNDINTRO :: #load("../../res/intro.mp3")
 
 StartState :: struct {
   using vtable:  StateInterface,
@@ -46,12 +47,8 @@ StartState_init :: proc(w: ^sdl.Window, r: ^sdl.Renderer, sm: ^StateMachine) -> 
 
   ss.board = game.Board_init(ss.renderer)
 
-  ss.bg_music = mixer.LoadMUS("res/intro.mp3")
-
-  if ss.bg_music == nil {
-    fmt.eprintf("Failed to load intro sound! SDL_mixer Error: %s\n", sdl.GetError())
-    return nil
-  }
+  rwops := sdl.RWFromMem(raw_data(SOUNDINTRO), cast(i32)len(SOUNDINTRO))
+  ss.bg_music = mixer.LoadMUS_RW(rwops, true)
 
   return ss
 }

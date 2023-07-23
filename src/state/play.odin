@@ -7,9 +7,15 @@ import "../util"
 import "../config"
 import sdl "vendor:sdl2"
 import "vendor:sdl2/mixer"
+import "core:c"
+import "core:mem"
 
 CAPSCORE :: 100
 STARTCOOLDOWNTIMER :: 1000
+
+SOUNDDROP :: #load("../../res/drop.wav")
+SOUNDCLEAR :: #load("../../res/clear.wav")
+SOUNDPLAY :: #load("../../res/play.mp3")
 
 PlayState :: struct {
   using vtable:   StateInterface,
@@ -57,30 +63,17 @@ PlayState_init :: proc(w: ^sdl.Window, r: ^sdl.Renderer, sm: ^StateMachine) -> ^
   ps.font_info, _ = util.BitmapFont_init(r, "res/Futura.ttf", 25)
   ps.cooldown_timer = STARTCOOLDOWNTIMER
 
-  ps.drop_sound = mixer.LoadWAV("res/drop.wav")
+  rwops := sdl.RWFromMem(raw_data(SOUNDDROP), cast(i32)len(SOUNDDROP))
+  ps.drop_sound = mixer.LoadWAV_RW(rwops, true)
 
-  if ps.drop_sound == nil {
-    fmt.eprintf("Failed to load drop sound effect! SDL_mixer Error: %s\n", sdl.GetError())
-    return nil
-  }
+  rwops = sdl.RWFromMem(raw_data(SOUNDCLEAR), cast(i32)len(SOUNDCLEAR))
+  ps.clear_sound = mixer.LoadWAV_RW(rwops, true)
 
-  ps.clear_sound = mixer.LoadWAV("res/clear.wav")
-
-  if ps.clear_sound == nil {
-    fmt.eprintf("Failed to load clear sound effect! SDL_mixer Error: %s\n", sdl.GetError())
-    return nil
-  }
-
-  ps.bg_music = mixer.LoadMUS("res/play.mp3")
-
-  if ps.bg_music == nil {
-    fmt.eprintf("Failed to load background music! SDL_mixer Error: %s\n", sdl.GetError())
-    return nil
-  }
+  rwops = sdl.RWFromMem(raw_data(SOUNDPLAY), cast(i32)len(SOUNDPLAY))
+  ps.bg_music = mixer.LoadMUS_RW(rwops, true)
 
   board := game.Board_init(ps.renderer)
   piece := game.randomPiece(ps.renderer, &ps.score, &ps.internal_score, &ps.cap_score, &ps.level, &ps.line, &ps.cooldown_timer)
-
 
   ps.elements = map[string]game.Entity {
     "board" = board,
