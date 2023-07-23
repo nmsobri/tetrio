@@ -38,7 +38,7 @@ PauseState_init :: proc(w: ^sdl.Window, r: ^sdl.Renderer, sm: ^StateMachine, pla
   ps.state_machine = sm
   ps.play_state = play_state
   ps.frame_count = 0
-  ps.font_info, _ = util.BitmapFont_init(ps.renderer, "res/Futura.ttf", 25)
+  ps.font_info, _ = util.BitmapFont_init(ps.renderer, FONTINFO, 25)
 
   return ps
 }

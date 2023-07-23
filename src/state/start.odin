@@ -10,6 +10,9 @@ import sdl "vendor:sdl2"
 import "vendor:sdl2/mixer"
 
 SOUNDINTRO :: #load("../../res/intro.mp3")
+FONTINFO :: #load("../../res/Futura.ttf")
+FONTLOGO :: #load("../../res/Futura.ttf")
+FONTCREDIT :: #load("../../res/Futura.ttf")
 
 StartState :: struct {
   using vtable:  StateInterface,
@@ -31,9 +34,9 @@ StartState_init :: proc(w: ^sdl.Window, r: ^sdl.Renderer, sm: ^StateMachine) -> 
   ss.renderer = r
   ss.state_machine = sm
 
-  ss.font_info, _ = util.BitmapFont_init(ss.renderer, "res/Futura.ttf", 25)
-  ss.font_logo, _ = util.BitmapFont_init(ss.renderer, "res/Futura.ttf", 90)
-  ss.font_credit, _ = util.BitmapFont_init(ss.renderer, "res/Futura.ttf", 15)
+  ss.font_info, _ = util.BitmapFont_init(ss.renderer, FONTINFO, 25)
+  ss.font_logo, _ = util.BitmapFont_init(ss.renderer, FONTLOGO, 90)
+  ss.font_credit, _ = util.BitmapFont_init(ss.renderer, FONTCREDIT, 15)
 
   ss.vtable = {
     update  = update,

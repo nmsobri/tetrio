@@ -60,7 +60,7 @@ PlayState_init :: proc(w: ^sdl.Window, r: ^sdl.Renderer, sm: ^StateMachine) -> ^
   ps.cap_score = CAPSCORE
   ps.line = 0
   ps.cap_timer = util.Timer_init()
-  ps.font_info, _ = util.BitmapFont_init(r, "res/Futura.ttf", 25)
+  ps.font_info, _ = util.BitmapFont_init(r, FONTINFO, 25)
   ps.cooldown_timer = STARTCOOLDOWNTIMER
 
   rwops := sdl.RWFromMem(raw_data(SOUNDDROP), cast(i32)len(SOUNDDROP))

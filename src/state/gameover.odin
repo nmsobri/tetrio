@@ -36,7 +36,7 @@ GameoverState_init :: proc(w: ^sdl.Window, r: ^sdl.Renderer, sm: ^StateMachine, 
   gos.renderer = r
   gos.state_machine = sm
   gos.play_state = play_state
-  gos.font_info, _ = util.BitmapFont_init(gos.renderer, "res/Futura.ttf", 25)
+  gos.font_info, _ = util.BitmapFont_init(gos.renderer, FONTINFO, 25)
 
   return gos
 }

@@ -9,7 +9,8 @@ import ttf "vendor:sdl2/ttf"
 NUM_GLYPHS :: 127
 
 BitmapFontInterface :: struct {
-  initFont:           proc(self: ^BitmapFont, path: string, size: i32) -> bool,
+  initFontPath:       proc(self: ^BitmapFont, path: string, size: i32) -> bool,
+  initFontRW:         proc(self: ^BitmapFont, font_data: []byte, size: i32) -> bool,
   calculateTextWidth: proc(self: ^BitmapFont, text: string) -> u32,
   renderText:         proc(self: ^BitmapFont, _x: c.int, _y: c.int, text: string, r: u8, g: u8, b: u8) -> bool,
   getGlyphs:          proc(self: ^BitmapFont) -> [NUM_GLYPHS]sdl.Rect,
@@ -27,7 +28,15 @@ BitmapFont :: struct {
 }
 
 
-BitmapFont_init :: proc(renderer: ^sdl.Renderer, path: string, size: i32) -> (^BitmapFont, bool) {
+// Overloading this function so it doesnt matter how you
+// init the Font either from memory or from file
+BitmapFont_init :: proc {
+  BitmapFontInitRw,
+  BitmapFontInitPath,
+}
+
+
+BitmapFontInitPath :: proc(renderer: ^sdl.Renderer, path: string, size: i32) -> (^BitmapFont, bool) {
   if ttf.Init() < 0 {
     fmt.eprintf("SDL_ttf could not initialize! SDL_ttf Error: %s\n", ttf.GetError())
     return nil, false
@@ -37,7 +46,8 @@ BitmapFont_init :: proc(renderer: ^sdl.Renderer, path: string, size: i32) -> (^B
   bf.renderer = renderer
 
   bf.vtable = {
-    initFont           = initFont,
+    initFontRW         = initFontRW,
+    initFontPath       = initFontPath,
     calculateTextWidth = calculateTextWidth,
     renderText         = renderText,
     getGlyphs          = getGlyphs,
@@ -46,38 +56,38 @@ BitmapFont_init :: proc(renderer: ^sdl.Renderer, path: string, size: i32) -> (^B
     close              = close,
   }
 
-  bf->initFont(path, size)
+  bf->initFontPath(path, size)
   return bf, true
 }
 
-@(private = "file")
-total_font_size :: proc(self: ^BitmapFont) -> (c.int, c.int) {
-  i: u8 = ' '
-  font_width: c.int = 0
-  font_height: c.int = 0
 
-  total_font_width: c.int = 0
-  total_font_height: c.int = 0
-
-  for i <= '~' {
-    ch := cstring(raw_data([]u8{i, 0}))
-
-    if ttf.SizeUTF8(self.font, ch, &font_width, &font_height) != 0 {
-      fmt.eprintf("Failed to get font text size! SDL_ttf Error: %s\n", ttf.GetError())
-      return 0, 0
-    }
-
-    total_font_width += font_width
-    total_font_height = font_height
-    i += 1
+BitmapFontInitRw :: proc(renderer: ^sdl.Renderer, font_data: []byte, size: i32) -> (^BitmapFont, bool) {
+  if ttf.Init() < 0 {
+    fmt.eprintf("SDL_ttf could not initialize! SDL_ttf Error: %s\n", ttf.GetError())
+    return nil, false
   }
 
-  return total_font_width, total_font_height
+  bf := new(BitmapFont)
+  bf.renderer = renderer
+
+  bf.vtable = {
+    initFontRW         = initFontRW,
+    initFontPath       = initFontPath,
+    calculateTextWidth = calculateTextWidth,
+    renderText         = renderText,
+    getGlyphs          = getGlyphs,
+    getGlyphHeight     = getGlyphHeight,
+    total_font_size    = total_font_size,
+    close              = close,
+  }
+
+  bf->initFontRW(font_data, size)
+  return bf, true
 }
 
 
 @(private = "file")
-initFont :: proc(self: ^BitmapFont, path: string, size: i32) -> bool {
+initFontPath :: proc(self: ^BitmapFont, path: string, size: i32) -> bool {
   mem.set(&self.glyphs, 0, size_of(sdl.Rect) * NUM_GLYPHS)
 
   self.font = ttf.OpenFont(fmt.caprintf("%s", path), size)
@@ -151,6 +161,111 @@ initFont :: proc(self: ^BitmapFont, path: string, size: i32) -> bool {
 
   self.texture = sdl.CreateTextureFromSurface(self.renderer, atlas_surface)
   return true
+}
+
+
+@(private = "file")
+initFontRW :: proc(self: ^BitmapFont, font_data: []byte, size: i32) -> bool {
+  mem.set(&self.glyphs, 0, size_of(sdl.Rect) * NUM_GLYPHS)
+
+  rwops := sdl.RWFromMem(raw_data(font_data), cast(i32)len(font_data))
+  self.font = ttf.OpenFontRW(rwops, true, size)
+
+  if self.font == nil {
+    fmt.eprintf("Failed to load font! Sdl_ttf Error: %s\n", ttf.GetError())
+    return false
+  }
+
+  atlas_width, atlas_height := self->total_font_size()
+  atlas_surface: ^sdl.Surface
+
+  when ODIN_ENDIAN == .Big {
+    atlas_surface = sdl.CreateRGBSurface(0, atlas_width, atlas_height, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF)
+  } else {
+    atlas_surface = sdl.CreateRGBSurface(0, atlas_width, atlas_height, 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000)
+  }
+
+  defer sdl.FreeSurface(atlas_surface)
+
+  // Set transparent surface background 
+  if sdl.SetColorKey(atlas_surface, 1, sdl.MapRGBA(atlas_surface.format, 0, 0, 0, 0)) != 0 {
+    fmt.eprintf("Failed to set color key for font! SDL Error: %s\n", sdl.GetError())
+    return false
+  }
+
+  dest: sdl.Rect = {
+    x = 0,
+    y = 0,
+    w = 0,
+    h = 0,
+  }
+
+  i: u8 = ' '
+
+  for i <= '~' {
+    ch := cstring(raw_data([]u8{i, 0}))
+    text_surface := ttf.RenderUTF8_Blended(self.font, ch, {r = 255, g = 255, b = 255, a = 255})
+    defer sdl.FreeSurface(text_surface)
+
+    if ttf.SizeUTF8(self.font, ch, &dest.w, &dest.h) != 0 {
+      fmt.eprintf("Failed to get font text size! SDL_ttf Error: %s\n", ttf.GetError())
+      return false
+    }
+
+    if dest.x + dest.w > atlas_width {
+      dest.x = 0
+      dest.y += dest.h + 1
+
+      if dest.y + dest.h >= atlas_height {
+        fmt.eprintf("Out of glyph space in %dx%d font atlas texture map.\n", atlas_width, atlas_height)
+        return false
+      }
+    }
+
+    if sdl.BlitSurface(text_surface, nil, atlas_surface, &dest) != 0 {
+      fmt.eprintf("Failed to blit font to the surface! SDL Error: %s\n", sdl.GetError())
+      return false
+    }
+
+    self.glyphs[i] = {
+      x = dest.x,
+      y = dest.y,
+      w = dest.w,
+      h = dest.h,
+    }
+
+    dest.x += dest.w // Advance the glyph position
+    i += 1
+  }
+
+  self.texture = sdl.CreateTextureFromSurface(self.renderer, atlas_surface)
+  return true
+}
+
+
+@(private = "file")
+total_font_size :: proc(self: ^BitmapFont) -> (c.int, c.int) {
+  i: u8 = ' '
+  font_width: c.int = 0
+  font_height: c.int = 0
+
+  total_font_width: c.int = 0
+  total_font_height: c.int = 0
+
+  for i <= '~' {
+    ch := cstring(raw_data([]u8{i, 0}))
+
+    if ttf.SizeUTF8(self.font, ch, &font_width, &font_height) != 0 {
+      fmt.eprintf("Failed to get font text size! SDL_ttf Error: %s\n", ttf.GetError())
+      return 0, 0
+    }
+
+    total_font_width += font_width
+    total_font_height = font_height
+    i += 1
+  }
+
+  return total_font_width, total_font_height
 }
 
 
